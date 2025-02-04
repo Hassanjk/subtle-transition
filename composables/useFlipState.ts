@@ -1,0 +1,1 @@
+export const useFlipState = () => useState('flip-state', () => null)

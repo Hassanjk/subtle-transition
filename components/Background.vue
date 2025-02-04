@@ -1,28 +1,47 @@
 <template>
-  <TresCanvas window-size>
-    <TresPerspectiveCamera :position="[0, 0, 5]" />
-    <TresScene>
-      <TresMesh>
-        <TresPlaneGeometry :args="[10, 10, 32, 32]" />
-        <TresShaderMaterial :uniforms="uniforms" :fragment-shader="fragmentShader" :vertex-shader="vertexShader" />
-      </TresMesh>
-    </TresScene>
-  </TresCanvas>
+  <ClientOnly>
+    <TresCanvas window-size>
+      <TresPerspectiveCamera :position="[0, 0, 5]" />
+      <TresScene>
+        <TresMesh>
+          <TresPlaneGeometry :args="[10, 10, 32, 32]" />
+          <TresShaderMaterial 
+            :uniforms="uniforms" 
+            :fragment-shader="fragmentShader" 
+            :vertex-shader="vertexShader" 
+            transparent
+          />
+        </TresMesh>
+      </TresScene>
+    </TresCanvas>
+  </ClientOnly>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useMouseInCanvas } from '@tresjs/core'
+import { ref, onMounted, watch } from 'vue'
+import { useColorStore } from '~/stores/color'
+
+const colorStore = useColorStore()
 
 const uniforms = ref({
   u_time: { value: 0 },
-  u_resolution: { value: [window.innerWidth, window.innerHeight] },
+  u_resolution: { value: [1, 1] },
   u_mouse: { value: [0, 0] },
-  u_color1: { value: [245, 245, 245] },
-  u_color2: { value: [225, 225, 225] }
+  u_point: { value: [0.5, 0.5] },
+  u_ratio: { value: 1 },
+  u_mouseInteraction: { value: 1 },
+  u_color1: { value: [colorStore.color1.r, colorStore.color1.g, colorStore.color1.b] },
+  u_color2: { value: [colorStore.color2.r, colorStore.color2.g, colorStore.color2.b] }
 })
 
-const { position } = useMouseInCanvas()
+// Watch for color changes
+watch(() => colorStore.color1, (newColor) => {
+  uniforms.value.u_color1.value = [newColor.r, newColor.g, newColor.b]
+}, { deep: true })
+
+watch(() => colorStore.color2, (newColor) => {
+  uniforms.value.u_color2.value = [newColor.r, newColor.g, newColor.b]
+}, { deep: true })
 
 const vertexShader = `
   varying vec2 vUv;
@@ -35,10 +54,16 @@ const vertexShader = `
 const fragmentShader = `
   uniform float u_time;
   uniform vec2 u_resolution;
-  uniform vec2 u_mouse;
+  uniform vec2 u_point;
+  uniform float u_ratio;
+  uniform float u_mouseInteraction;
   uniform vec3 u_color1;
   uniform vec3 u_color2;
   varying vec2 vUv;
+
+  float circle_s(vec2 dist, float radius) {
+    return smoothstep(0., radius, pow(dot(dist,dist), .6) * .1);
+  }
 
   // Simplex noise function
   vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -74,18 +99,51 @@ const fragmentShader = `
   }
 
   void main() {
-    vec2 st = gl_FragCoord.xy/u_resolution.xy;
-    float noise = snoise(st * 3.0 + u_time * 0.2);
+    vec2 aspect = vec2(u_resolution.x/u_resolution.y, 1.);
+    vec2 uv = vUv * aspect;
+    vec2 mouse = vUv - u_point;
+
+    mouse.y /= u_ratio;
     
-    vec3 color = mix(u_color1/255.0, u_color2/255.0, noise * 0.5 + 0.5);
-    gl_FragColor = vec4(color, 1.0);
+    float noise = snoise(vec2(uv.x * 3.0 + u_time * 0.2, uv.y * 3.0));
+    float noise1 = snoise(vec2(uv.x * 3.0 + 0.1 + u_time * 0.2, uv.y * 3.0 + 0.1));
+    float noise2 = snoise(vec2(uv.x * 3.0 - 0.1 + u_time * 0.2, uv.y * 3.0 - 0.1));
+    
+    float alpha = (noise + noise1 + noise2) / 3.0;
+    alpha *= circle_s(mouse, .015 * u_mouseInteraction);
+    float x = 1. - noise;
+    
+    vec3 color1 = vec3(u_color1.x/255., u_color1.y/255., u_color1.z/255.);
+    vec3 color2 = vec3(u_color2.x/255., u_color2.y/255., u_color2.z/255.);
+    
+    float blendFactor = smoothstep(.1, 1., x * 1.);
+    vec3 blendedColor = mix(color1, color2, blendFactor);
+
+    gl_FragColor = vec4(blendedColor, alpha * 0.5);
   }
 `
 
+const mousePosition = ref({ x: 0, y: 0 })
+
 onMounted(() => {
+  window.addEventListener('mousemove', (e) => {
+    mousePosition.value = {
+      x: e.clientX / window.innerWidth,
+      y: 1 - e.clientY / window.innerHeight
+    }
+    uniforms.value.u_point.value = [mousePosition.value.x, mousePosition.value.y]
+  })
+
+  const updateResolution = () => {
+    uniforms.value.u_resolution.value = [window.innerWidth, window.innerHeight]
+    uniforms.value.u_ratio.value = window.innerWidth / window.innerHeight
+  }
+
+  updateResolution()
+  window.addEventListener('resize', updateResolution)
+
   const animate = () => {
     uniforms.value.u_time.value += 0.01
-    uniforms.value.u_mouse.value = [position.value.x, position.value.y]
     requestAnimationFrame(animate)
   }
   animate()

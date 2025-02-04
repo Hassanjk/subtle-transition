@@ -4,10 +4,13 @@
     <div class="container mx-auto px-4">
       <header class="py-8 flex justify-between items-center">
         <NuxtLink to="/" class="text-2xl font-bold">FP</NuxtLink>
-        <nav>
-          <NuxtLink to="/projects" class="mx-4">Projects</NuxtLink>
-          <NuxtLink to="/about" class="mx-4">About</NuxtLink>
-        </nav>
+        <div class="flex items-center space-x-8">
+          <nav>
+            <NuxtLink to="/projects" class="mx-4">Projects</NuxtLink>
+            <NuxtLink to="/about" class="mx-4">About</NuxtLink>
+          </nav>
+          <div class="text-sm">UDINE, {{ currentTime }}</div>
+        </div>
       </header>
       <NuxtPage />
     </div>
@@ -15,48 +18,39 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { gsap } from 'gsap'
-import SplitType from 'split-type'
+import { ref, onMounted } from 'vue'
 
-// Register the clip title effect
-gsap.registerEffect({
-  name: 'clipTitle',
-  effect: (targets, config) => {
-    const tl = gsap.timeline({
-      defaults: { duration: config.duration, ease: config.ease }
-    })
+const currentTime = ref('')
 
-    const chars = new SplitType(targets, { 
-      types: 'chars',
-      tagName: 'span'
-    }).chars
+const updateTime = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Rome'
+  }) + ' CEST'
+}
 
-    tl.fromTo(chars,
-      {
-        x: config.x,
-        yPercent: config.yPercent,
-        clipPath: 'inset(0% 100% 120% -5%)',
-        transformOrigin: '0% 50%',
-      },
-      {
-        clipPath: 'inset(0% -100% -100% -5%)',
-        x: 0,
-        yPercent: 0,
-        stagger: config.stagger,
-        duration: config.duration,
-        ease: config.ease,
-      }
-    )
-
-    return tl
-  },
-  defaults: { 
-    yPercent: 30,
-    x: -30,
-    duration: 0.8,
-    ease: 'power3.out',
-    stagger: -0.05
-  }
+onMounted(() => {
+  updateTime()
+  setInterval(updateTime, 1000)
 })
 </script>
+
+<style>
+body {
+  @apply bg-black text-white;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
+}
+</style>
