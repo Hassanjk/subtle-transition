@@ -18,7 +18,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useColorStore } from '~/stores/color'
 
 const colorStore = useColorStore()
@@ -126,26 +126,35 @@ const fragmentShader = `
 const mousePosition = ref({ x: 0, y: 0 })
 
 onMounted(() => {
-  window.addEventListener('mousemove', (e) => {
+  if (typeof window === 'undefined') return
+
+  const handleMouseMove = (e) => {
     mousePosition.value = {
       x: e.clientX / window.innerWidth,
       y: 1 - e.clientY / window.innerHeight
     }
     uniforms.value.u_point.value = [mousePosition.value.x, mousePosition.value.y]
-  })
+  }
 
   const updateResolution = () => {
     uniforms.value.u_resolution.value = [window.innerWidth, window.innerHeight]
     uniforms.value.u_ratio.value = window.innerWidth / window.innerHeight
   }
 
-  updateResolution()
+  window.addEventListener('mousemove', handleMouseMove)
   window.addEventListener('resize', updateResolution)
+  updateResolution()
 
   const animate = () => {
     uniforms.value.u_time.value += 0.01
     requestAnimationFrame(animate)
   }
   animate()
+
+  // Cleanup
+  onUnmounted(() => {
+    window.removeEventListener('mousemove', handleMouseMove)
+    window.removeEventListener('resize', updateResolution)
+  })
 })
 </script>

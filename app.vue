@@ -1,6 +1,7 @@
 <template>
   <div class="relative">
     <Background class="fixed inset-0 -z-10" />
+    <MouseTrail />
     <div class="container mx-auto px-4">
       <header class="py-8 flex justify-between items-center">
         <NuxtLink to="/" class="text-2xl font-bold">FP</NuxtLink>

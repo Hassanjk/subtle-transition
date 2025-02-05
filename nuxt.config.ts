@@ -4,12 +4,16 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@tresjs/nuxt',
   ],
+
   css: ['~/assets/styles/main.scss'],
+
   app: {
     pageTransition: {
       name: 'page',
       mode: 'out-in'
     }
   },
-  devtools: { enabled: false }
+
+  devtools: { enabled: false },
+  compatibilityDate: '2025-02-04'
 })
