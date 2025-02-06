@@ -1,9 +1,9 @@
 <template>
   <LoadingScreen :is-loading="isLoading" />
   
-  <main class="min-h-screen relative">
+  <main class="min-h-screen relative text-white">
     <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 py-8 px-8 flex justify-between items-center z-50">
+    <header class="fixed top-0 left-0 right-0 py-8 px-8 flex justify-between items-center z-50 bg-transparent">
       <NuxtLink to="/" class="text-2xl font-bold">F P</NuxtLink>
       <div class="flex items-center gap-8">
         <div class="text-sm opacity-60">UDINE, {{ currentTime }}</div>
@@ -14,7 +14,7 @@
       </div>
     </header>
 
-    <div class="min-h-screen flex items-center px-20">
+    <div class="min-h-screen flex items-center px-20 relative z-10">
       <div class="w-full">
         <!-- Project Counter -->
         <div class="project-counter mb-20">
@@ -54,7 +54,7 @@
     </div>
 
     <!-- Background -->
-    <Background class="fixed inset-0 -z-10" />
+    <Background class="fixed inset-0 -z-10 opacity-80" />
     <MouseTrail />
   </main>
 </template>
@@ -143,6 +143,7 @@ onUnmounted(() => {
 .project-counter {
   position: relative;
   display: inline-block;
+  color: white;
 }
 
 .preview-container {

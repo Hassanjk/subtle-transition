@@ -30,8 +30,8 @@ const uniforms = ref({
   u_point: { value: [0.5, 0.5] },
   u_ratio: { value: 1 },
   u_mouseInteraction: { value: 1 },
-  u_color1: { value: [240, 240, 255] }, // Light blueish
-  u_color2: { value: [255, 240, 240] }  // Light reddish
+  u_color1: { value: [255, 150, 220] }, // Lighter pink
+  u_color2: { value: [220, 100, 180] }   // Lighter magenta
 })
 
 const vertexShader = `
@@ -52,13 +52,13 @@ const fragmentShader = `
   uniform vec3 u_color2;
   varying vec2 vUv;
 
-  void main() {
-    vec2 aspect = vec2(u_resolution.x/u_resolution.y, 1.);
-    vec2 uv = vUv * aspect;
-    vec2 mouse = vUv - u_point;
+  // Simplex noise function
+  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
 
-    mouse.y /= u_ratio;
-    
+  float snoise(vec2 v) {
+    const vec4 C = vec4(0.211324865405187,
                        0.366025403784439,
                       -0.577350269189626,
                        0.024390243902439);
@@ -110,7 +110,7 @@ const fragmentShader = `
     float blendFactor = smoothstep(.1, 1., x * 1.);
     vec3 blendedColor = mix(color1, color2, blendFactor);
 
-    gl_FragColor = vec4(blendedColor, alpha * 0.5); // Increased alpha slightly
+    gl_FragColor = vec4(blendedColor, alpha * 0.4); // Reduced alpha for a lighter look
   }
 `
 
