@@ -12,12 +12,12 @@
         <span class="block mb-2 text-sm opacity-60">Projects</span>
         <div class="flex gap-2">
           <NuxtLink 
-            v-for="i in 3" 
-            :key="i"
-            :to="`/projects/${i}`"
+            v-for="project in projects" 
+            :key="project.id"
+            :to="`/projects/${project.id}`"
             class="w-10 h-10 rounded bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
           >
-            {{ i }}
+            {{ project.id }}
           </NuxtLink>
         </div>
       </div>
@@ -30,10 +30,14 @@ import { ref, onMounted } from 'vue'
 import { gsap } from 'gsap'
 import SplitType from 'split-type'
 import { useColorStore } from '~/stores/color'
+import { projects } from '~/data/projects'
 
 const colorStore = useColorStore()
 const title = ref(null)
 const subtitle = ref(null)
+
+let currentProjectIndex = 0
+const autoChangeInterval = 5000 // 5 seconds
 
 onMounted(() => {
   // Set initial gradient colors
@@ -85,6 +89,20 @@ onMounted(() => {
   gsap.effects.clipTitle(title.value)
   gsap.effects.clipTitle(subtitle.value, {
     delay: 0.3
+  })
+
+  // Start automatic project cycling
+  const autoChangeProject = () => {
+    currentProjectIndex = (currentProjectIndex + 1) % projects.length
+    const nextProject = projects[currentProjectIndex]
+    colorStore.setColors(nextProject.color1, nextProject.color2)
+  }
+
+  const intervalId = setInterval(autoChangeProject, autoChangeInterval)
+
+  // Clean up interval on component unmount
+  onUnmounted(() => {
+    clearInterval(intervalId)
   })
 })
 </script>

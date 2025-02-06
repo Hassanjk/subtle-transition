@@ -18,7 +18,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, onUnmounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useColorStore } from '~/stores/color'
 
 const colorStore = useColorStore()
@@ -33,15 +33,6 @@ const uniforms = ref({
   u_color1: { value: [colorStore.color1.r, colorStore.color1.g, colorStore.color1.b] },
   u_color2: { value: [colorStore.color2.r, colorStore.color2.g, colorStore.color2.b] }
 })
-
-// Watch for color changes
-watch(() => colorStore.color1, (newColor) => {
-  uniforms.value.u_color1.value = [newColor.r, newColor.g, newColor.b]
-}, { deep: true })
-
-watch(() => colorStore.color2, (newColor) => {
-  uniforms.value.u_color2.value = [newColor.r, newColor.g, newColor.b]
-}, { deep: true })
 
 const vertexShader = `
   varying vec2 vUv;
@@ -60,10 +51,6 @@ const fragmentShader = `
   uniform vec3 u_color1;
   uniform vec3 u_color2;
   varying vec2 vUv;
-
-  float circle_s(vec2 dist, float radius) {
-    return smoothstep(0., radius, pow(dot(dist,dist), .6) * .1);
-  }
 
   // Simplex noise function
   vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -98,6 +85,10 @@ const fragmentShader = `
     return 130.0 * dot(m, g);
   }
 
+  float circle_s(vec2 dist, float radius) {
+    return smoothstep(0., radius, pow(dot(dist,dist), .6) * .1);
+  }
+
   void main() {
     vec2 aspect = vec2(u_resolution.x/u_resolution.y, 1.);
     vec2 uv = vUv * aspect;
@@ -123,17 +114,19 @@ const fragmentShader = `
   }
 `
 
-const mousePosition = ref({ x: 0, y: 0 })
+// Watch for color changes
+watch(() => colorStore.color1, (newColor) => {
+  uniforms.value.u_color1.value = [newColor.r, newColor.g, newColor.b]
+}, { deep: true })
+
+watch(() => colorStore.color2, (newColor) => {
+  uniforms.value.u_color2.value = [newColor.r, newColor.g, newColor.b]
+}, { deep: true })
 
 onMounted(() => {
-  if (typeof window === 'undefined') return
-
   const handleMouseMove = (e) => {
-    mousePosition.value = {
-      x: e.clientX / window.innerWidth,
-      y: 1 - e.clientY / window.innerHeight
-    }
-    uniforms.value.u_point.value = [mousePosition.value.x, mousePosition.value.y]
+    uniforms.value.u_mouse.value = [e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight]
+    uniforms.value.u_point.value = [e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight]
   }
 
   const updateResolution = () => {
@@ -151,7 +144,6 @@ onMounted(() => {
   }
   animate()
 
-  // Cleanup
   onUnmounted(() => {
     window.removeEventListener('mousemove', handleMouseMove)
     window.removeEventListener('resize', updateResolution)

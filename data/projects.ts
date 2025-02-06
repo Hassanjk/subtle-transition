@@ -1,5 +1,4 @@
-// Definition of the Project interface and the projects array
-interface Project {
+export interface Project {
   id: number
   title: string
   slug: string
