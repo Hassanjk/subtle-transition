@@ -1,152 +1,157 @@
 <template>
-  <ClientOnly>
-    <TresCanvas window-size>
-      <TresPerspectiveCamera :position="[0, 0, 5]" />
-      <TresScene>
-        <TresMesh>
-          <TresPlaneGeometry :args="[10, 10, 32, 32]" />
-          <TresShaderMaterial 
-            :uniforms="uniforms" 
-            :fragment-shader="fragmentShader" 
-            :vertex-shader="vertexShader" 
-            transparent
-          />
-        </TresMesh>
-      </TresScene>
-    </TresCanvas>
-  </ClientOnly>
+  <div class="background">
+    <canvas ref="canvas"></canvas>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { useColorStore } from '~/stores/color'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { gsap } from 'gsap'
 
-const colorStore = useColorStore()
-
-const uniforms = ref({
-  u_time: { value: 0 },
-  u_resolution: { value: [1, 1] },
-  u_mouse: { value: [0, 0] },
-  u_point: { value: [0.5, 0.5] },
-  u_ratio: { value: 1 },
-  u_mouseInteraction: { value: 1 },
-  u_color1: { value: [255, 150, 220] }, // Lighter pink
-  u_color2: { value: [220, 100, 180] }   // Lighter magenta
-})
+const canvas = ref(null)
+let gl
+let program
+let lastTime = 0
+let animationFrame
+let mouseX = 0.5
+let mouseY = 0.5
 
 const vertexShader = `
+  attribute vec2 position;
   varying vec2 vUv;
   void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vUv = position * 0.5 + 0.5;
+    gl_Position = vec4(position, 0.0, 1.0);
   }
 `
 
 const fragmentShader = `
-  uniform float u_time;
-  uniform vec2 u_resolution;
-  uniform vec2 u_point;
-  uniform float u_ratio;
-  uniform float u_mouseInteraction;
-  uniform vec3 u_color1;
-  uniform vec3 u_color2;
+  precision highp float;
+  uniform float uTime;
+  uniform vec2 uMouse;
+  uniform vec2 uResolution;
   varying vec2 vUv;
 
-  // Simplex noise function
-  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-  vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-  vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
-
-  float snoise(vec2 v) {
-    const vec4 C = vec4(0.211324865405187,
-                       0.366025403784439,
-                      -0.577350269189626,
-                       0.024390243902439);
-    vec2 i  = floor(v + dot(v, C.yy) );
-    vec2 x0 = v -   i + dot(i, C.xx);
-    vec2 i1;
-    i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
-    vec4 x12 = x0.xyxy + C.xxzz;
-    x12.xy -= i1;
-    i = mod289(i);
-    vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
-      + i.x + vec3(0.0, i1.x, 1.0 ));
-    vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
-    m = m*m ;
-    m = m*m ;
-    vec3 x = 2.0 * fract(p * C.www) - 1.0;
-    vec3 h = abs(x) - 0.5;
-    vec3 ox = floor(x + 0.5);
-    vec3 a0 = x - ox;
-    m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
-    vec3 g;
-    g.x  = a0.x  * x0.x  + h.x  * x0.y;
-    g.yz = a0.yz * x12.xz + h.yz * x12.yw;
-    return 130.0 * dot(m, g);
-  }
-
-  float circle_s(vec2 dist, float radius) {
-    return smoothstep(0., radius, pow(dot(dist,dist), .6) * .1);
-  }
-
   void main() {
-    vec2 aspect = vec2(u_resolution.x/u_resolution.y, 1.);
-    vec2 uv = vUv * aspect;
-    vec2 mouse = vUv - u_point;
+    vec2 uv = vUv;
+    vec2 mouse = uMouse;
+    
+    // Time varying pixel color
+    float t = uTime * 0.2;
+    
+    // Create smooth waves
+    float wave1 = sin(uv.x * 4.0 + t) * 0.5 + 0.5;
+    float wave2 = sin(uv.y * 5.0 - t * 1.5) * 0.5 + 0.5;
+    
+    // Mouse influence on waves
+    float dist = length(uv - mouse);
+    float mouseFactor = smoothstep(0.4, 0.0, dist);
+    
+    vec3 color1 = vec3(0.07, 0.09, 0.15); // Dark blue
+    vec3 color2 = vec3(0.13, 0.07, 0.15); // Dark purple
+    
+    // Create gradient with waves
+    vec3 color = mix(
+      color1,
+      color2,
+      wave1 * wave2 + mouseFactor
+    );
+    
+    // Add subtle vignette
+    float vignette = smoothstep(1.2, 0.5, length(uv - 0.5));
+    color *= vignette;
 
-    mouse.y /= u_ratio;
-    
-    float noise = snoise(vec2(uv.x * 2.0 + u_time * 0.1, uv.y * 2.0)); // Reduced noise frequency
-    float noise1 = snoise(vec2(uv.x * 2.0 + 0.1 + u_time * 0.1, uv.y * 2.0 + 0.1));
-    float noise2 = snoise(vec2(uv.x * 2.0 - 0.1 + u_time * 0.1, uv.y * 2.0 - 0.1));
-    
-    float alpha = (noise + noise1 + noise2) / 3.0;
-    alpha *= circle_s(mouse, .015 * u_mouseInteraction);
-    float x = 1. - noise;
-    
-    vec3 color1 = vec3(u_color1.x/255., u_color1.y/255., u_color1.z/255.);
-    vec3 color2 = vec3(u_color2.x/255., u_color2.y/255., u_color2.z/255.);
-    
-    float blendFactor = smoothstep(.1, 1., x * 1.);
-    vec3 blendedColor = mix(color1, color2, blendFactor);
-
-    gl_FragColor = vec4(blendedColor, alpha * 0.4); // Reduced alpha for a lighter look
+    gl_FragColor = vec4(color, 1.0);
   }
 `
 
-// Watch for color changes
-watch(() => colorStore.color1, (newColor) => {
-  uniforms.value.u_color1.value = [newColor.r, newColor.g, newColor.b]
-}, { deep: true })
+const createShader = (type, source) => {
+  const shader = gl.createShader(type)
+  gl.shaderSource(shader, source)
+  gl.compileShader(shader)
+  return shader
+}
 
-watch(() => colorStore.color2, (newColor) => {
-  uniforms.value.u_color2.value = [newColor.r, newColor.g, newColor.b]
-}, { deep: true })
+const initGL = () => {
+  gl = canvas.value.getContext('webgl')
+  program = gl.createProgram()
+
+  // Compile shaders
+  const vs = createShader(gl.VERTEX_SHADER, vertexShader)
+  const fs = createShader(gl.FRAGMENT_SHADER, fragmentShader)
+
+  gl.attachShader(program, vs)
+  gl.attachShader(program, fs)
+  gl.linkProgram(program)
+  gl.useProgram(program)
+
+  // Create vertices
+  const vertices = new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1])
+  const buffer = gl.createBuffer()
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
+
+  // Set attributes and uniforms
+  const position = gl.getAttribLocation(program, 'position')
+  gl.enableVertexAttribArray(position)
+  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0)
+}
+
+const resize = () => {
+  const width = window.innerWidth
+  const height = window.innerHeight
+  canvas.value.width = width
+  canvas.value.height = height
+  gl.viewport(0, 0, width, height)
+
+  const uResolution = gl.getUniformLocation(program, 'uResolution')
+  gl.uniform2f(uResolution, width, height)
+}
+
+const render = (time = 0) => {
+  const uTime = gl.getUniformLocation(program, 'uTime')
+  gl.uniform1f(uTime, time * 0.001)
+
+  const uMouse = gl.getUniformLocation(program, 'uMouse')
+  gl.uniform2f(uMouse, mouseX, mouseY)
+
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, 4)
+  animationFrame = requestAnimationFrame(render)
+}
+
+const handleMouseMove = (e) => {
+  mouseX = e.clientX / window.innerWidth
+  mouseY = 1 - e.clientY / window.innerHeight
+}
 
 onMounted(() => {
-  const handleMouseMove = (e) => {
-    uniforms.value.u_mouse.value = [e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight]
-    uniforms.value.u_point.value = [e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight]
-  }
-
-  const updateResolution = () => {
-    uniforms.value.u_resolution.value = [window.innerWidth, window.innerHeight]
-    uniforms.value.u_ratio.value = window.innerWidth / window.innerHeight
-  }
-
+  initGL()
+  resize()
+  render()
+  
+  window.addEventListener('resize', resize)
   window.addEventListener('mousemove', handleMouseMove)
-  window.addEventListener('resize', updateResolution)
-  updateResolution()
+})
 
-  const animate = () => {
-    uniforms.value.u_time.value += 0.01
-    requestAnimationFrame(animate)
-  }
-  animate()
-
-  onUnmounted(() => {
-    window.removeEventListener('mousemove', handleMouseMove)
-    window.removeEventListener('resize', updateResolution)
-  })
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', resize)
+  window.removeEventListener('mousemove', handleMouseMove)
+  cancelAnimationFrame(animationFrame)
 })
 </script>
+
+<style scoped>
+.background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+canvas {
+  display: block;
+  background: #07090f;
+}
+</style>
