@@ -5,7 +5,7 @@
         <li v-for="(project, index) in projects" :key="index" class="project-card">
           <NuxtLink :to="`/projects/${project.slug}`" class="block">
             <div class="relative overflow-hidden rounded-lg">
-              <img :src="project.image" :alt="project.title" class="w-full h-full object-cover">
+              <img :src="project.thumbnail" :alt="project.title" class="w-full h-full object-cover">
               <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                 <h3 class="text-white text-2xl font-bold">{{ project.title }}</h3>
               </div>
@@ -22,32 +22,9 @@ import { onMounted } from 'vue'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Draggable } from 'gsap/Draggable'
+import { projects } from '../data/projects'
 
 gsap.registerPlugin(ScrollTrigger, Draggable)
-
-const projects = ref([
-  {
-    title: 'Unisve Crafts',
-    slug: 'unisve-crafts',
-    image: '/projects/unisve.jpg',
-    year: 2021,
-    agency: 'Overpx'
-  },
-  {
-    title: 'Airbag Studio',
-    slug: 'airbag-studio',
-    image: '/projects/airbag.jpg',
-    year: 2023,
-    agency: 'Overpx'
-  },
-  {
-    title: 'Things Agency',
-    slug: 'things-agency',
-    image: '/projects/things.jpg',
-    year: 2023,
-    agency: 'Things'
-  }
-])
 
 onMounted(() => {
   let iteration = 0
