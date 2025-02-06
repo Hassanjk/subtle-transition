@@ -1,23 +1,38 @@
 <template>
+  <LoadingScreen :is-loading="isLoading" />
+  
   <main class="min-h-[calc(100vh-8rem)] flex items-center">
     <div class="max-w-4xl">
-      <h1 ref="title" class="text-6xl font-bold mb-8">
+      <h1 ref="title" class="text-7xl font-bold mb-8">
         Creative Developer & Designer
       </h1>
       <p ref="subtitle" class="text-xl mb-8 max-w-2xl">
         Crafting immersive digital experiences through code and design.
         Specialized in creative development and interactive animations.
       </p>
-      <div class="demos fixed bottom-8 right-8 bg-white/5 backdrop-blur-sm rounded-lg p-4">
-        <span class="block mb-2 text-sm opacity-60">Projects</span>
-        <div class="flex gap-2">
+      
+      <!-- Project Preview -->
+      <div class="fixed bottom-8 right-8 w-[400px]">
+        <div class="preview-container relative overflow-hidden rounded-2xl">
           <NuxtLink 
             v-for="project in projects" 
             :key="project.id"
             :to="`/projects/${project.id}`"
-            class="w-10 h-10 rounded bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            class="preview-item absolute inset-0 transition-all duration-500 cursor-pointer"
+            :class="{ 'opacity-0': currentProject.id !== project.id }"
           >
-            {{ project.id }}
+            <img 
+              :src="project.thumbnail" 
+              :alt="project.title"
+              class="w-full h-full object-cover"
+            >
+            <div class="absolute inset-0 bg-black/20 backdrop-blur-sm p-6 flex flex-col justify-end">
+              <h3 class="text-2xl font-bold mb-2">{{ project.title }}</h3>
+              <div class="flex justify-between items-center">
+                <p class="text-sm opacity-80">{{ project.year }}</p>
+                <span class="text-sm">View Project →</span>
+              </div>
+            </div>
           </NuxtLink>
         </div>
       </div>
@@ -26,7 +41,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { gsap } from 'gsap'
 import SplitType from 'split-type'
 import { useColorStore } from '~/stores/color'
@@ -35,81 +50,89 @@ import { projects } from '~/data/projects'
 const colorStore = useColorStore()
 const title = ref(null)
 const subtitle = ref(null)
+const isLoading = ref(true)
+const currentProject = ref(projects[0])
 
-let currentProjectIndex = 0
-const autoChangeInterval = 5000 // 5 seconds
+// Automatic project switching
+const switchInterval = 5000 // 5 seconds
+let currentIndex = 0
+let intervalId = null
 
-onMounted(() => {
-  // Set initial gradient colors
+const switchProject = () => {
+  currentIndex = (currentIndex + 1) % projects.length
+  currentProject.value = projects[currentIndex]
+  
+  // Update background colors with brighter values
+  const project = projects[currentIndex]
   colorStore.setColors(
-    { r: 200, g: 220, b: 255 }, // Light blue
-    { r: 180, g: 180, b: 255 }  // Light purple
+    {
+      r: Math.min(project.color1.r + 30, 255),
+      g: Math.min(project.color1.g + 30, 255),
+      b: Math.min(project.color1.b + 30, 255)
+    },
+    {
+      r: Math.min(project.color2.r + 30, 255),
+      g: Math.min(project.color2.g + 30, 255),
+      b: Math.min(project.color2.b + 30, 255)
+    }
   )
+}
 
+onMounted(async () => {
+  // Simulate loading
+  await new Promise(resolve => setTimeout(resolve, 2000))
+  isLoading.value = false
+
+  // Initialize text animations
   gsap.registerEffect({
     name: 'clipTitle',
     effect: (targets, config) => {
-      const tl = gsap.timeline({
-        defaults: { duration: config.duration, ease: config.ease }
-      })
-
-      const chars = new SplitType(targets, { 
-        types: 'chars',
-        tagName: 'span'
-      }).chars
-
-      tl.fromTo(chars,
+      const chars = new SplitType(targets, { types: 'chars' }).chars
+      
+      return gsap.fromTo(chars,
         {
-          x: config.x,
-          yPercent: config.yPercent,
-          clipPath: 'inset(0% 100% 120% -5%)',
-          transformOrigin: '0% 50%',
+          y: 100,
+          opacity: 0,
+          rotateX: -90,
         },
         {
-          clipPath: 'inset(0% -100% -100% -5%)',
-          x: 0,
-          yPercent: 0,
-          stagger: config.stagger,
-          duration: config.duration,
-          ease: config.ease,
+          y: 0,
+          opacity: 1,
+          rotateX: 0,
+          duration: 1,
+          stagger: 0.02,
+          ease: 'power4.out',
         }
       )
-
-      return tl
-    },
-    defaults: { 
-      yPercent: 30,
-      x: -30,
-      duration: 0.8,
-      ease: 'power3.out',
-      stagger: -0.05
     }
   })
 
   gsap.effects.clipTitle(title.value)
-  gsap.effects.clipTitle(subtitle.value, {
-    delay: 0.3
-  })
+  gsap.effects.clipTitle(subtitle.value)
 
-  // Start automatic project cycling
-  const autoChangeProject = () => {
-    currentProjectIndex = (currentProjectIndex + 1) % projects.length
-    const nextProject = projects[currentProjectIndex]
-    colorStore.setColors(nextProject.color1, nextProject.color2)
-  }
+  // Start project switching
+  intervalId = setInterval(switchProject, switchInterval)
+})
 
-  const intervalId = setInterval(autoChangeProject, autoChangeInterval)
-
-  // Clean up interval on component unmount
-  onUnmounted(() => {
-    clearInterval(intervalId)
-  })
+// Clean up interval
+onUnmounted(() => {
+  if (intervalId) clearInterval(intervalId)
 })
 </script>
 
-<style>
-.char {
-  display: inline-block;
-  will-change: transform;
+<style scoped>
+.preview-container {
+  height: 250px;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.preview-item {
+  transform: translateZ(0);
+  transition: all 0.5s ease-out;
+}
+
+.preview-item:hover {
+  transform: translateZ(20px) scale(1.05);
 }
 </style>

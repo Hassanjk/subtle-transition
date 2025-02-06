@@ -1,4 +1,3 @@
-
 <template>
   <div 
     v-if="isLoading"
@@ -6,53 +5,74 @@
     :class="{ 'fade-out': isFading }"
   >
     <div class="text-center">
-      <div class="loading-circle mb-4"></div>
-      <div class="text-sm opacity-60">{{ loadingText }}</div>
+      <div class="loading-percentage text-8xl font-bold mb-8">{{ percentage }}%</div>
+      <div class="loading-text text-xl opacity-60">{{ loadingText }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   isLoading: Boolean
 })
 
 const isFading = ref(false)
+const percentage = ref(0)
 const loadingText = ref('Loading')
+let dotsInterval = null
+
+// Animate percentage
+const animatePercentage = () => {
+  const duration = 2000 // 2 seconds
+  const start = performance.now()
+  
+  const animate = (currentTime) => {
+    const elapsed = currentTime - start
+    const progress = Math.min(elapsed / duration, 1)
+    
+    percentage.value = Math.floor(progress * 100)
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    }
+  }
+  
+  requestAnimationFrame(animate)
+}
 
 watch(() => props.isLoading, (newVal, oldVal) => {
   if (oldVal && !newVal) {
     isFading.value = true
   }
+  if (newVal) {
+    animatePercentage()
+  }
 })
 
-// Update loading text with dots animation
-let dots = 0
-setInterval(() => {
-  dots = (dots + 1) % 4
-  loadingText.value = 'Loading' + '.'.repeat(dots)
-}, 500)
+onMounted(() => {
+  // Update loading text with dots animation
+  let dots = 0
+  dotsInterval = setInterval(() => {
+    dots = (dots + 1) % 4
+    loadingText.value = 'Loading' + '.'.repeat(dots)
+  }, 500)
+})
+
+onUnmounted(() => {
+  if (dotsInterval) clearInterval(dotsInterval)
+})
 </script>
 
 <style scoped>
-.loading-circle {
-  width: 40px;
-  height: 40px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
+.loading-percentage {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
 
 .fade-out {
-  animation: fadeOut 0.5s forwards;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  animation: fadeOut 0.8s forwards;
 }
 
 @keyframes fadeOut {
