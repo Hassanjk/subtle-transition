@@ -1,42 +1,61 @@
 <template>
   <LoadingScreen :is-loading="isLoading" />
   
-  <main class="min-h-[calc(100vh-8rem)] flex items-center">
-    <div class="max-w-4xl">
-      <h1 ref="title" class="text-7xl font-bold mb-8">
-        Creative Developer & Designer
-      </h1>
-      <p ref="subtitle" class="text-xl mb-8 max-w-2xl">
-        Crafting immersive digital experiences through code and design.
-        Specialized in creative development and interactive animations.
-      </p>
-      
-      <!-- Project Preview -->
-      <div class="fixed bottom-8 right-8 w-[400px]">
-        <div class="preview-container relative overflow-hidden rounded-2xl">
-          <NuxtLink 
-            v-for="project in projects" 
-            :key="project.id"
-            :to="`/projects/${project.id}`"
-            class="preview-item absolute inset-0 transition-all duration-500 cursor-pointer"
-            :class="{ 'opacity-0': currentProject.id !== project.id }"
-          >
-            <img 
-              :src="project.thumbnail" 
-              :alt="project.title"
-              class="w-full h-full object-cover"
-            >
-            <div class="absolute inset-0 bg-black/20 backdrop-blur-sm p-6 flex flex-col justify-end">
-              <h3 class="text-2xl font-bold mb-2">{{ project.title }}</h3>
-              <div class="flex justify-between items-center">
-                <p class="text-sm opacity-80">{{ project.year }}</p>
-                <span class="text-sm">View Project →</span>
-              </div>
+  <main class="min-h-screen relative">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 py-8 px-8 flex justify-between items-center z-50">
+      <NuxtLink to="/" class="text-2xl font-bold">F P</NuxtLink>
+      <div class="flex items-center gap-8">
+        <div class="text-sm opacity-60">UDINE, {{ currentTime }}</div>
+        <nav class="flex gap-8">
+          <NuxtLink to="/projects">PROJECTS</NuxtLink>
+          <NuxtLink to="/about">ABOUT</NuxtLink>
+        </nav>
+      </div>
+    </header>
+
+    <div class="min-h-screen flex items-center px-20">
+      <div class="w-full">
+        <!-- Project Counter -->
+        <div class="project-counter mb-20">
+          <div class="inline-block relative">
+            <div class="text-9xl font-light opacity-20">{{ currentIndex }}</div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-9xl font-light">
+              {{ currentIndex + 1 }}
             </div>
+          </div>
+          <div class="text-sm uppercase mt-4">NUMBER</div>
+        </div>
+
+        <!-- Project Title -->
+        <h1 ref="title" class="text-8xl font-light mb-4">
+          {{ currentProject.title }}
+        </h1>
+
+        <div class="flex justify-between items-end">
+          <div class="max-w-xl">
+            <p class="text-xl mb-8 opacity-60">
+              {{ currentProject.description }}
+            </p>
+            <div class="flex gap-8 items-center">
+              <div class="opacity-60">AGENCY. {{ currentProject.agency }}</div>
+              <div class="opacity-60">YEAR. {{ currentProject.year }}</div>
+            </div>
+          </div>
+
+          <NuxtLink 
+            :to="`/projects/${currentProject.id}`"
+            class="px-8 py-4 border border-white/20 rounded-full hover:bg-white/10 transition-colors"
+          >
+            VISIT →
           </NuxtLink>
         </div>
       </div>
     </div>
+
+    <!-- Background -->
+    <Background class="fixed inset-0 -z-10" />
+    <MouseTrail />
   </main>
 </template>
 
@@ -52,28 +71,28 @@ const title = ref(null)
 const subtitle = ref(null)
 const isLoading = ref(true)
 const currentProject = ref(projects[0])
+const currentIndex = ref(0)
 
 // Automatic project switching
 const switchInterval = 5000 // 5 seconds
-let currentIndex = 0
 let intervalId = null
 
 const switchProject = () => {
-  currentIndex = (currentIndex + 1) % projects.length
-  currentProject.value = projects[currentIndex]
+  currentIndex.value = (currentIndex.value + 1) % projects.length
+  currentProject.value = projects[currentIndex.value]
   
-  // Update background colors with brighter values
-  const project = projects[currentIndex]
+  // Update background colors
+  const project = projects[currentIndex.value]
   colorStore.setColors(
     {
-      r: Math.min(project.color1.r + 30, 255),
-      g: Math.min(project.color1.g + 30, 255),
-      b: Math.min(project.color1.b + 30, 255)
+      r: Math.min(project.color1.r + 50, 255),
+      g: Math.min(project.color1.g + 50, 255),
+      b: Math.min(project.color1.b + 50, 255)
     },
     {
-      r: Math.min(project.color2.r + 30, 255),
-      g: Math.min(project.color2.g + 30, 255),
-      b: Math.min(project.color2.b + 30, 255)
+      r: Math.min(project.color2.r + 50, 255),
+      g: Math.min(project.color2.g + 50, 255),
+      b: Math.min(project.color2.b + 50, 255)
     }
   )
 }
@@ -121,6 +140,11 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.project-counter {
+  position: relative;
+  display: inline-block;
+}
+
 .preview-container {
   height: 250px;
   transform-style: preserve-3d;

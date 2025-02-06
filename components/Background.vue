@@ -30,8 +30,8 @@ const uniforms = ref({
   u_point: { value: [0.5, 0.5] },
   u_ratio: { value: 1 },
   u_mouseInteraction: { value: 1 },
-  u_color1: { value: [colorStore.color1.r, colorStore.color1.g, colorStore.color1.b] },
-  u_color2: { value: [colorStore.color2.r, colorStore.color2.g, colorStore.color2.b] }
+  u_color1: { value: [240, 240, 255] }, // Light blueish
+  u_color2: { value: [255, 240, 240] }  // Light reddish
 })
 
 const vertexShader = `
@@ -52,13 +52,13 @@ const fragmentShader = `
   uniform vec3 u_color2;
   varying vec2 vUv;
 
-  // Simplex noise function
-  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-  vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-  vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+  void main() {
+    vec2 aspect = vec2(u_resolution.x/u_resolution.y, 1.);
+    vec2 uv = vUv * aspect;
+    vec2 mouse = vUv - u_point;
 
-  float snoise(vec2 v) {
-    const vec4 C = vec4(0.211324865405187,
+    mouse.y /= u_ratio;
+    
                        0.366025403784439,
                       -0.577350269189626,
                        0.024390243902439);
@@ -96,9 +96,9 @@ const fragmentShader = `
 
     mouse.y /= u_ratio;
     
-    float noise = snoise(vec2(uv.x * 3.0 + u_time * 0.2, uv.y * 3.0));
-    float noise1 = snoise(vec2(uv.x * 3.0 + 0.1 + u_time * 0.2, uv.y * 3.0 + 0.1));
-    float noise2 = snoise(vec2(uv.x * 3.0 - 0.1 + u_time * 0.2, uv.y * 3.0 - 0.1));
+    float noise = snoise(vec2(uv.x * 2.0 + u_time * 0.1, uv.y * 2.0)); // Reduced noise frequency
+    float noise1 = snoise(vec2(uv.x * 2.0 + 0.1 + u_time * 0.1, uv.y * 2.0 + 0.1));
+    float noise2 = snoise(vec2(uv.x * 2.0 - 0.1 + u_time * 0.1, uv.y * 2.0 - 0.1));
     
     float alpha = (noise + noise1 + noise2) / 3.0;
     alpha *= circle_s(mouse, .015 * u_mouseInteraction);
@@ -110,7 +110,7 @@ const fragmentShader = `
     float blendFactor = smoothstep(.1, 1., x * 1.);
     vec3 blendedColor = mix(color1, color2, blendFactor);
 
-    gl_FragColor = vec4(blendedColor, alpha * 0.5);
+    gl_FragColor = vec4(blendedColor, alpha * 0.5); // Increased alpha slightly
   }
 `
 

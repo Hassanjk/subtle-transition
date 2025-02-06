@@ -14,6 +14,7 @@
     "@pinia/nuxt": "^0.5.1",
     "@tresjs/cientos": "^3.8.0",
     "@tresjs/nuxt": "^3.0.7",
+    "gradient-color": "^2.0.1",
     "gsap": "^3.12.5",
     "nuxt": "^3.10.3",
     "split-type": "^0.3.4",
