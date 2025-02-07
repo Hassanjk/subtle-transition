@@ -1,60 +1,68 @@
 <template>
   <LoadingScreen :is-loading="isLoading" />
   
-  <main class="min-h-screen relative text-white">
-    <!-- Header -->
+  <main class="relative text-white">
     <header class="fixed top-0 left-0 right-0 py-8 px-8 flex justify-between items-center z-50 bg-transparent">
-      <NuxtLink to="/" class="text-2xl font-bold">F P</NuxtLink>
+      <NuxtLink to="/" class="text-2xl font-bold">FP</NuxtLink>
       <div class="flex items-center gap-8">
-        <div class="text-sm opacity-60">UDINE, {{ currentTime }}</div>
-        <nav class="flex gap-8">
-          <NuxtLink to="/projects">PROJECTS</NuxtLink>
-          <NuxtLink to="/about">ABOUT</NuxtLink>
+        <nav>
+          <NuxtLink to="/projects" class="mx-4">Projects</NuxtLink>
+          <NuxtLink to="/about" class="mx-4">About</NuxtLink>
         </nav>
+        <div class="text-sm">UDINE, {{ currentTime }}</div>
       </div>
     </header>
 
-    <div class="min-h-screen flex items-center px-20 relative z-10">
-      <div class="w-full">
-        <!-- Project Counter -->
-        <div class="project-counter mb-20">
-          <div class="inline-block relative">
-            <div class="text-9xl font-light opacity-20">{{ currentIndex }}</div>
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-9xl font-light">
-              {{ currentIndex + 1 }}
+    <div class="min-h-screen">
+      <div ref="projectsContainer" class="project-container">
+        <div 
+          v-for="(project, index) in projects" 
+          :key="project.id" 
+          class="project-section absolute inset-0 flex items-center px-20"
+          :class="{ 'active': currentIndex === index }"
+        >
+          <div class="w-full">
+            <!-- Project Counter -->
+            <div class="project-counter mb-20">
+              <div class="inline-block relative">
+                <div class="text-9xl font-light opacity-20">{{ project.id - 1 }}</div>
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-9xl font-light">
+                  {{ project.id }}
+                </div>
+              </div>
+              <div class="text-sm uppercase mt-4">NUMBER</div>
+            </div>
+
+            <!-- Project Title -->
+            <h1 class="text-8xl font-light mb-4">
+              {{ project.title }}
+            </h1>
+
+            <div class="flex justify-between items-end">
+              <div class="max-w-xl">
+                <p class="text-xl mb-8 opacity-60">
+                  {{ project.description }}
+                </p>
+                <div class="flex gap-8 items-center">
+                  <div class="opacity-60">AGENCY. {{ project.agency }}</div>
+                  <div class="opacity-60">YEAR. {{ project.year }}</div>
+                </div>
+              </div>
+
+              <NuxtLink 
+                :to="`/projects/${project.id}`"
+                class="px-8 py-4 border border-white/20 rounded-full hover:bg-white/10 transition-colors"
+              >
+                VISIT →
+              </NuxtLink>
             </div>
           </div>
-          <div class="text-sm uppercase mt-4">NUMBER</div>
-        </div>
-
-        <!-- Project Title -->
-        <h1 ref="title" class="text-8xl font-light mb-4">
-          {{ currentProject.title }}
-        </h1>
-
-        <div class="flex justify-between items-end">
-          <div class="max-w-xl">
-            <p class="text-xl mb-8 opacity-60">
-              {{ currentProject.description }}
-            </p>
-            <div class="flex gap-8 items-center">
-              <div class="opacity-60">AGENCY. {{ currentProject.agency }}</div>
-              <div class="opacity-60">YEAR. {{ currentProject.year }}</div>
-            </div>
-          </div>
-
-          <NuxtLink 
-            :to="`/projects/${currentProject.id}`"
-            class="px-8 py-4 border border-white/20 rounded-full hover:bg-white/10 transition-colors"
-          >
-            VISIT →
-          </NuxtLink>
         </div>
       </div>
     </div>
 
     <!-- Background -->
-    <Background class="fixed inset-0 -z-10 opacity-80" />
+    <Background class="fixed inset-0 -z-10" />
     <MouseTrail />
   </main>
 </template>
@@ -62,38 +70,49 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { gsap } from 'gsap'
-import SplitType from 'split-type'
 import { useColorStore } from '~/stores/color'
 import { projects } from '~/data/projects'
 
 const colorStore = useColorStore()
-const title = ref(null)
-const subtitle = ref(null)
 const isLoading = ref(true)
-const currentProject = ref(projects[0])
+const currentTime = ref('')
 const currentIndex = ref(0)
+const projectsContainer = ref(null)
+let autoSwitchInterval
 
-// Automatic project switching
-const switchInterval = 5000 // 5 seconds
-let intervalId = null
+// Update time
+const updateTime = () => {
+  const now = new Date()
+  currentTime.value = now.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Europe/Rome'
+  }) + ' CEST'
+}
 
-const switchProject = () => {
-  currentIndex.value = (currentIndex.value + 1) % projects.length
-  currentProject.value = projects[currentIndex.value]
+// Switch to next project
+const nextProject = () => {
+  const nextIndex = (currentIndex.value + 1) % projects.length
   
+  // Fade out current project
+  gsap.to(`.project-section:nth-child(${currentIndex.value + 1})`, {
+    opacity: 0,
+    y: -50,
+    duration: 0.5,
+    ease: 'power2.in'
+  })
+
+  // Update current index
+  currentIndex.value = nextIndex
+
   // Update background colors
-  const project = projects[currentIndex.value]
-  colorStore.setColors(
-    {
-      r: Math.min(project.color1.r + 50, 255),
-      g: Math.min(project.color1.g + 50, 255),
-      b: Math.min(project.color1.b + 50, 255)
-    },
-    {
-      r: Math.min(project.color2.r + 50, 255),
-      g: Math.min(project.color2.g + 50, 255),
-      b: Math.min(project.color2.b + 50, 255)
-    }
+  colorStore.setColors(projects[nextIndex].color1, projects[nextIndex].color2)
+
+  // Fade in next project
+  gsap.fromTo(`.project-section:nth-child(${nextIndex + 1})`,
+    { opacity: 0, y: 50 },
+    { opacity: 1, y: 0, duration: 0.5, delay: 0.5, ease: 'power2.out' }
   )
 }
 
@@ -102,62 +121,53 @@ onMounted(async () => {
   await new Promise(resolve => setTimeout(resolve, 2000))
   isLoading.value = false
 
-  // Initialize text animations
-  gsap.registerEffect({
-    name: 'clipTitle',
-    effect: (targets, config) => {
-      const chars = new SplitType(targets, { types: 'chars' }).chars
-      
-      return gsap.fromTo(chars,
-        {
-          y: 100,
-          opacity: 0,
-          rotateX: -90,
-        },
-        {
-          y: 0,
-          opacity: 1,
-          rotateX: 0,
-          duration: 1,
-          stagger: 0.02,
-          ease: 'power4.out',
-        }
-      )
-    }
+  // Initialize time update
+  updateTime()
+  const timeInterval = setInterval(updateTime, 1000)
+
+  // Show initial project
+  gsap.to(`.project-section:nth-child(1)`, {
+    opacity: 1,
+    y: 0,
+    duration: 0.5
   })
 
-  gsap.effects.clipTitle(title.value)
-  gsap.effects.clipTitle(subtitle.value)
+  // Start auto-switching
+  autoSwitchInterval = setInterval(nextProject, 5000) // Switch every 5 seconds
 
-  // Start project switching
-  intervalId = setInterval(switchProject, switchInterval)
-})
-
-// Clean up interval
-onUnmounted(() => {
-  if (intervalId) clearInterval(intervalId)
+  // Cleanup
+  onUnmounted(() => {
+    clearInterval(timeInterval)
+    clearInterval(autoSwitchInterval)
+  })
 })
 </script>
 
 <style scoped>
-.project-counter {
+.project-container {
   position: relative;
-  display: inline-block;
-  color: white;
+  min-height: 100vh;
+  padding-top: 32px;
 }
 
-.preview-container {
-  height: 250px;
-  transform-style: preserve-3d;
-  perspective: 1000px;
+.project-section {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
 }
 
-.preview-item {
-  transform: translateZ(0);
-  transition: all 0.5s ease-out;
+.project-section.active {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-.preview-item:hover {
-  transform: translateZ(20px) scale(1.05);
+/* Hide scrollbar but keep functionality */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 </style>

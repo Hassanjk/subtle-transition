@@ -1,157 +1,169 @@
 <template>
   <div class="background">
-    <canvas ref="canvas"></canvas>
+    <div class="gradient-bg">
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="goo">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8" result="goo" />
+            <feBlend in="SourceGraphic" in2="goo" />
+          </filter>
+        </defs>
+      </svg>
+      <div class="gradients-container">
+        <div class="g1"></div>
+        <div class="g2"></div>
+        <div class="g3"></div>
+        <div class="g4"></div>
+        <div class="g5"></div>
+        <div class="interactive"></div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { gsap } from 'gsap'
-
-const canvas = ref(null)
-let gl
-let program
-let lastTime = 0
-let animationFrame
-let mouseX = 0.5
-let mouseY = 0.5
-
-const vertexShader = `
-  attribute vec2 position;
-  varying vec2 vUv;
-  void main() {
-    vUv = position * 0.5 + 0.5;
-    gl_Position = vec4(position, 0.0, 1.0);
-  }
-`
-
-const fragmentShader = `
-  precision highp float;
-  uniform float uTime;
-  uniform vec2 uMouse;
-  uniform vec2 uResolution;
-  varying vec2 vUv;
-
-  void main() {
-    vec2 uv = vUv;
-    vec2 mouse = uMouse;
-    
-    // Time varying pixel color
-    float t = uTime * 0.2;
-    
-    // Create smooth waves
-    float wave1 = sin(uv.x * 4.0 + t) * 0.5 + 0.5;
-    float wave2 = sin(uv.y * 5.0 - t * 1.5) * 0.5 + 0.5;
-    
-    // Mouse influence on waves
-    float dist = length(uv - mouse);
-    float mouseFactor = smoothstep(0.4, 0.0, dist);
-    
-    vec3 color1 = vec3(0.07, 0.09, 0.15); // Dark blue
-    vec3 color2 = vec3(0.13, 0.07, 0.15); // Dark purple
-    
-    // Create gradient with waves
-    vec3 color = mix(
-      color1,
-      color2,
-      wave1 * wave2 + mouseFactor
-    );
-    
-    // Add subtle vignette
-    float vignette = smoothstep(1.2, 0.5, length(uv - 0.5));
-    color *= vignette;
-
-    gl_FragColor = vec4(color, 1.0);
-  }
-`
-
-const createShader = (type, source) => {
-  const shader = gl.createShader(type)
-  gl.shaderSource(shader, source)
-  gl.compileShader(shader)
-  return shader
-}
-
-const initGL = () => {
-  gl = canvas.value.getContext('webgl')
-  program = gl.createProgram()
-
-  // Compile shaders
-  const vs = createShader(gl.VERTEX_SHADER, vertexShader)
-  const fs = createShader(gl.FRAGMENT_SHADER, fragmentShader)
-
-  gl.attachShader(program, vs)
-  gl.attachShader(program, fs)
-  gl.linkProgram(program)
-  gl.useProgram(program)
-
-  // Create vertices
-  const vertices = new Float32Array([-1, -1, -1, 1, 1, 1, 1, -1])
-  const buffer = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
-  gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW)
-
-  // Set attributes and uniforms
-  const position = gl.getAttribLocation(program, 'position')
-  gl.enableVertexAttribArray(position)
-  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0)
-}
-
-const resize = () => {
-  const width = window.innerWidth
-  const height = window.innerHeight
-  canvas.value.width = width
-  canvas.value.height = height
-  gl.viewport(0, 0, width, height)
-
-  const uResolution = gl.getUniformLocation(program, 'uResolution')
-  gl.uniform2f(uResolution, width, height)
-}
-
-const render = (time = 0) => {
-  const uTime = gl.getUniformLocation(program, 'uTime')
-  gl.uniform1f(uTime, time * 0.001)
-
-  const uMouse = gl.getUniformLocation(program, 'uMouse')
-  gl.uniform2f(uMouse, mouseX, mouseY)
-
-  gl.drawArrays(gl.TRIANGLE_FAN, 0, 4)
-  animationFrame = requestAnimationFrame(render)
-}
-
-const handleMouseMove = (e) => {
-  mouseX = e.clientX / window.innerWidth
-  mouseY = 1 - e.clientY / window.innerHeight
-}
+import { onMounted, onUnmounted } from 'vue'
 
 onMounted(() => {
-  initGL()
-  resize()
-  render()
-  
-  window.addEventListener('resize', resize)
-  window.addEventListener('mousemove', handleMouseMove)
-})
+  const interBubble = document.querySelector('.interactive')
+  let curX = 0
+  let curY = 0
+  let tgX = 0
+  let tgY = 0
 
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', resize)
-  window.removeEventListener('mousemove', handleMouseMove)
-  cancelAnimationFrame(animationFrame)
+  function move() {
+    curX += (tgX - curX) / 20
+    curY += (tgY - curY) / 20
+    if (interBubble) {
+      interBubble.style.transform = `translate(${Math.round(curX)}px, ${Math.round(curY)}px)`
+    }
+    requestAnimationFrame(move)
+  }
+
+  const handleMouseMove = (event) => {
+    tgX = event.clientX
+    tgY = event.clientY
+  }
+
+  window.addEventListener('mousemove', handleMouseMove)
+  move()
+
+  onUnmounted(() => {
+    window.removeEventListener('mousemove', handleMouseMove)
+  })
 })
 </script>
 
-<style scoped>
+<style>
 .background {
+  width: 100%;
+  height: 100%;
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  overflow: hidden;
   z-index: -1;
 }
 
-canvas {
-  display: block;
-  background: #07090f;
+.gradient-bg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  overflow: hidden;
+  background: linear-gradient(40deg, var(--color-bg1), var(--color-bg2));
+}
+
+.gradient-bg svg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+}
+
+.gradients-container {
+  filter: url(#goo) blur(40px);
+  width: 100%;
+  height: 100%;
+}
+
+.g1, .g2, .g3, .g4, .g5, .interactive {
+  position: absolute;
+  mix-blend-mode: var(--blending);
+  width: var(--circle-size);
+  height: var(--circle-size);
+  animation-timing-function: ease;
+  animation-iteration-count: infinite;
+}
+
+.g1 {
+  background: radial-gradient(circle at center, rgba(var(--color1), 0.8) 0, rgba(var(--color1), 0) 50%) no-repeat;
+  top: calc(50% - var(--circle-size) / 2);
+  left: calc(50% - var(--circle-size) / 2);
+  transform-origin: center center;
+  animation: moveVertical 30s infinite;
+}
+
+.g2 {
+  background: radial-gradient(circle at center, rgba(var(--color2), 0.8) 0, rgba(var(--color2), 0) 50%) no-repeat;
+  top: calc(50% - var(--circle-size) / 2);
+  left: calc(50% - var(--circle-size) / 2);
+  transform-origin: calc(50% - 400px);
+  animation: moveInCircle 20s reverse infinite;
+}
+
+.g3 {
+  background: radial-gradient(circle at center, rgba(var(--color3), 0.8) 0, rgba(var(--color3), 0) 50%) no-repeat;
+  top: calc(50% - var(--circle-size) / 2 + 200px);
+  left: calc(50% - var(--circle-size) / 2 - 500px);
+  transform-origin: calc(50% + 400px);
+  animation: moveInCircle 40s linear infinite;
+}
+
+.g4 {
+  background: radial-gradient(circle at center, rgba(var(--color4), 0.8) 0, rgba(var(--color4), 0) 50%) no-repeat;
+  top: calc(50% - var(--circle-size) / 2);
+  left: calc(50% - var(--circle-size) / 2);
+  transform-origin: calc(50% - 200px);
+  animation: moveHorizontal 40s infinite;
+  opacity: 0.7;
+}
+
+.g5 {
+  background: radial-gradient(circle at center, rgba(var(--color5), 0.8) 0, rgba(var(--color5), 0) 50%) no-repeat;
+  width: calc(var(--circle-size) * 2);
+  height: calc(var(--circle-size) * 2);
+  top: calc(50% - var(--circle-size));
+  left: calc(50% - var(--circle-size));
+  transform-origin: calc(50% - 800px) calc(50% + 200px);
+  animation: moveInCircle 20s infinite;
+}
+
+.interactive {
+  background: radial-gradient(circle at center, rgba(var(--color-interactive), 0.8) 0, rgba(var(--color-interactive), 0) 50%) no-repeat;
+  width: 100%;
+  height: 100%;
+  top: -50%;
+  left: -50%;
+  opacity: 0.7;
+}
+
+@keyframes moveInCircle {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(180deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes moveVertical {
+  0% { transform: translateY(-50%); }
+  50% { transform: translateY(50%); }
+  100% { transform: translateY(-50%); }
+}
+
+@keyframes moveHorizontal {
+  0% { transform: translateX(-50%) translateY(-10%); }
+  50% { transform: translateX(50%) translateY(10%); }
+  100% { transform: translateX(-50%) translateY(-10%); }
 }
 </style>
